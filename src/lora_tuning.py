@@ -42,6 +42,7 @@ class Lora_Trainer :
         self.model_config = config['model']
         self.lora_config = config['lora']
         self.train_config = config["training"]
+        self.data_HF_config = config['data_config']
         self.experiment_path = experiment_path
         self.logger = create_logger(os.path.join(self.experiment_path, "log.txt"))
         if self.model_config["tokenizer_path"]:
@@ -124,12 +125,12 @@ class Lora_Trainer :
 
     def _create_hf_datasets(self):
         # Load Opus-100 English-Vietnamese dataset from Hugging Face datasets library
-        dataset = load_dataset(self.data_config["hf_dataset_name"], self.data_config["hf_dataset_config"])
+        dataset = load_dataset(self.data_HF_config["hf_dataset_name"], self.data_HF_config["hf_dataset_config"])
 
 
         def preprocess_function(examples):
-            src = [self.data_config["src_prefix"] + ": " + text.strip() + " </s>" for text in examples["translation"][self.data_config["src_lang"]]]
-            tgt = [text.strip() + " </s>" for text in examples["translation"][self.data_config["tgt_lang"]]]
+            src = [self.data_HF_config["src_prefix"] + ": " + text.strip() + " </s>" for text in examples["translation"][self.data_HF_config["src_lang"]]]
+            tgt = [text.strip() + " </s>" for text in examples["translation"][self.data_HF_config["tgt_lang"]]]
             return {"src_texts": src, "tgt_texts": tgt}
 
         tokenized_dataset = dataset.map(preprocess_function, batched=True)
@@ -240,7 +241,7 @@ class Lora_Trainer :
         )
 
         self.logger.info("Building data generators...")
-        if self.data_config['use_HF']:
+        if self.data_HF_config['use_HF']:
             print('Preparing for huggingface dataset: ')
             train_generator, dev_generator, tgt_dev = self._create_hf_datasets()
             print("Done !!!")
