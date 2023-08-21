@@ -67,8 +67,8 @@ class Lora_Trainer :
         test_dataset = dataset['test']
 
         LANG_TOKEN_MAPPING = {
-            self.data_config['src_lang']: '',
-            self.data_config['tgt_lang']: ''
+            self.data_HF_config['src_lang']: '',
+            self.data_HF_config['tgt_lang']: ''
         }
 
         special_tokens_dict = {'additional_special_tokens': list(LANG_TOKEN_MAPPING.values())}
@@ -148,7 +148,7 @@ class Lora_Trainer :
         train_generator = get_data_generator(train_dataset, LANG_TOKEN_MAPPING, self.tokenizer)
         dev_generator = get_data_generator(test_dataset, LANG_TOKEN_MAPPING, self.tokenizer)
 
-        all_data = (train_generator, dev_generator, test_dataset["translation"][self.data_config['tgt_lang']])
+        all_data = (train_generator, dev_generator, test_dataset["translation"][self.data_HF_config['tgt_lang']])
 
         return all_data
 
