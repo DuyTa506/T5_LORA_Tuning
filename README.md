@@ -1,4 +1,4 @@
-# Reasearch for Lora Adapter Tuning
+# Research for Lora Adapter Tuning
 # Finetune HuggingFace's T5 
 
 This repository allows you to finetune HuggingFace's T5 implementation on Neural Machine Translation.
