@@ -33,10 +33,10 @@ data:
 
 data_config :
   use_HF : True
-  hf_dataset_name: "opus100",
-  hf_dataset_config": "en-vi",
-  src_prefix": "src",
-  src_lang: "en",
+  hf_dataset_name: "opus100"
+  hf_dataset_config": "en-vi"
+  src_prefix": "src"
+  src_lang: "en"
   tgt_lang: "vi"
 
 
