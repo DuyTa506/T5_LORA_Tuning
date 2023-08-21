@@ -24,6 +24,6 @@ def main():
     os.makedirs(current_experiment_path)
     # initialize trainer and train
     trainer = Lora_Trainer(config, current_experiment_path)
-
+    trainer.train()
 if __name__ == "__main__":
     main()
