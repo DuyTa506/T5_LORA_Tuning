@@ -59,49 +59,115 @@ class Lora_Trainer :
         self.logger.info(f"Experiment Output Path: \n {self.experiment_path}")
         self.logger.info(f"Training will be begin with this configuration: \n {config} ")
     
+    def _create_datasets(self) -> tuple:
+
+        """
+        Creates the following dataset from the data paths in the config file.
+
+        - a train generator that generates batches of src and tgt data
+        - a dev generator that generates batches of src dev data
+        - tgt_dev that denotes the raw target dev data
+        """
+        # add task prefix and EOS token as required by model
+        src_train = [
+            self.data_config["src_prefix"]+":" + text.strip() + " </s>"
+            for text in list(open(self.data_config["src_train"], encoding="utf-8"))
+        ]
+        src_dev = [
+             self.data_config["src_prefix"] +":"+ text.strip() + " </s>"
+            for text in list(open(self.data_config["src_dev"], encoding="utf-8"))
+        ]
+
+        tgt_train = [text.strip() + " </s>" for text in list(open(self.data_config["tgt_train"], encoding="utf-8"))]
+        tgt_dev = [text.strip() for text in list(open(self.data_config["tgt_dev"], encoding="utf-8"))]
+
+        # tokenize src and target data
+        src_train_dict = self.tokenizer.batch_encode_plus(
+            src_train,
+            max_length=self.train_config["max_output_length"],
+            return_tensors="pt",
+            pad_to_max_length=True,
+        )
+        src_dev_dict = self.tokenizer.batch_encode_plus(
+            src_dev,
+            max_length=self.train_config["max_output_length"],
+            return_tensors="pt",
+            pad_to_max_length=True,
+        )
+        tgt_train_dict = self.tokenizer.batch_encode_plus(
+            tgt_train,
+            max_length=self.train_config["max_output_length"],
+            return_tensors="pt",
+            pad_to_max_length=True,
+        )
+
+        # obtain input tensors
+        input_ids = src_train_dict["input_ids"]
+        input_dev_ids = src_dev_dict["input_ids"]
+        output_ids = tgt_train_dict["input_ids"]
+
+        # specify data loader params and create train generator
+        params = {
+            "batch_size": self.train_config["batch_size"],
+            "shuffle": self.train_config["shuffle_data"],
+            "num_workers": self.train_config["num_workers_data_gen"],
+        }
+        train_generator = DataLoader(ParallelDataset(input_ids, output_ids), **params)
+        print("train_generator:", train_generator)
+        self.logger.info(f"Created training dataset of {len(input_ids)} parallel sentences")
+
+        dev_params = params
+        dev_params["shuffle"] = False
+        dev_generator = DataLoader(MonoDataset(input_dev_ids), **dev_params)
+
+        all_data = (train_generator, dev_generator, tgt_dev)
+
+        return all_data
+
+
     def _create_hf_datasets(self):
         # Load Opus-100 English-Vietnamese dataset from Hugging Face datasets library
         dataset = load_dataset(self.data_HF_config["hf_dataset_name"], self.data_HF_config["hf_dataset_config"])
 
         train_dataset = dataset['train']
         test_dataset = dataset['test']
-
+        
         LANG_TOKEN_MAPPING = {
             self.data_HF_config['src_lang']: '',
             self.data_HF_config['tgt_lang']: ''
         }
-
+        
         special_tokens_dict = {'additional_special_tokens': list(LANG_TOKEN_MAPPING.values())}
         self.tokenizer.add_special_tokens(special_tokens_dict)
         self.model.resize_token_embeddings(len(self.tokenizer))
-
+        
         def encode_input_str(text, target_lang, tokenizer, seq_len,
                             lang_token_map=LANG_TOKEN_MAPPING):
             target_lang_token = lang_token_map[target_lang]
 
-            # Tokenize and add special tokens
+        # Tokenize and add special tokens
             input_ids = tokenizer.encode(
-                text=target_lang_token + text,
-                return_tensors='pt',
-                padding='max_length',
-                truncation=True,
-                max_length=seq_len)
+                text = target_lang_token + text,
+                return_tensors = 'pt',
+                padding = 'max_length',
+                truncation = True,
+                max_length = seq_len)
 
             return input_ids[0]
-
+        
         def encode_target_str(text, tokenizer, seq_len,
                             lang_token_map=LANG_TOKEN_MAPPING):
             token_ids = tokenizer.encode(
-                text=text,
-                return_tensors='pt',
-                padding='max_length',
-                truncation=True,
-                max_length=seq_len)
-
+                text = text,
+                return_tensors = 'pt',
+                padding = 'max_length',
+                truncation = True,
+                max_length = seq_len)
+            
             return token_ids[0]
-
-        def format_translation_data(translations, lang_token_map, tokenizer, seq_len=128):
-            # Choose a random 2 languages for in i/o
+        def format_translation_data(translations, lang_token_map,
+                                tokenizer, seq_len=128):
+    # Choose a random 2 languages for in i/o
             langs = list(lang_token_map.keys())
             input_lang, target_lang = np.random.choice(langs, size=2, replace=False)
 
@@ -114,7 +180,7 @@ class Lora_Trainer :
 
             input_token_ids = encode_input_str(
                 input_text, target_lang, tokenizer, seq_len, lang_token_map)
-
+            
             target_token_ids = encode_target_str(
                 target_text, tokenizer, seq_len, lang_token_map)
 
@@ -125,40 +191,42 @@ class Lora_Trainer :
             targets = []
             for translation_set in batch['translation']:
                 formatted_data = format_translation_data(
-                    translation_set, lang_token_map, tokenizer, self.train_config["max_output_length"])
-
+                    translation_set, lang_token_map, tokenizer, 300)
+                
                 if formatted_data is None:
                     continue
 
                 input_ids, target_ids = formatted_data
                 inputs.append(input_ids.unsqueeze(0))
                 targets.append(target_ids.unsqueeze(0))
-
-            batch_input_ids = torch.cat(inputs).to(self.device)
-            batch_target_ids = torch.cat(targets).to(self.device)
+                
+            batch_input_ids = torch.cat(inputs).cuda()
+            batch_target_ids = torch.cat(targets).cuda()
 
             return batch_input_ids, batch_target_ids
 
         def get_data_generator(dataset, lang_token_map, tokenizer, batch_size=32):
             dataset = dataset.shuffle()
             for i in range(0, len(dataset), batch_size):
-                raw_batch = dataset[i:i + batch_size]
+                raw_batch = dataset[i:i+batch_size]
                 yield transform_batch(raw_batch, lang_token_map, tokenizer)
 
+
+
+        target_labels = [data[self.data_HF_config['tgt_lang']] for data in test_dataset["translation"]]
         train_generator = get_data_generator(train_dataset, LANG_TOKEN_MAPPING, self.tokenizer)
         dev_generator = get_data_generator(test_dataset, LANG_TOKEN_MAPPING, self.tokenizer)
 
-        all_data = (train_generator, dev_generator, test_dataset["translation"][self.data_HF_config['tgt_lang']])
+        all_data = (train_generator, dev_generator, target_labels)
 
         return all_data
-
 
     def _build_model(self) -> None:
         """
         Build model and update its configuration.
         """
         model_config = {
-          "translation_vi_to_lao": {
+          "translation_en_to_vi": {
             "early_stopping": self.train_config["early_stopping"],
             "max_length": self.train_config["max_output_length"],
             "num_beams": self.train_config["beam_size"],
