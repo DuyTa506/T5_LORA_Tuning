@@ -166,7 +166,7 @@ class Lora_Trainer :
             
             return token_ids[0]
         def format_translation_data(translations, lang_token_map,
-                                tokenizer, seq_len=128):
+                                tokenizer, seq_len):
     # Choose a random 2 languages for in i/o
             langs = list(lang_token_map.keys())
             input_lang, target_lang = np.random.choice(langs, size=2, replace=False)
@@ -191,7 +191,7 @@ class Lora_Trainer :
             targets = []
             for translation_set in batch['translation']:
                 formatted_data = format_translation_data(
-                    translation_set, lang_token_map, tokenizer, 300)
+                    translation_set, lang_token_map, tokenizer, self.train_config['max_output_length'])
                 
                 if formatted_data is None:
                     continue
@@ -205,7 +205,7 @@ class Lora_Trainer :
 
             return batch_input_ids, batch_target_ids
 
-        def get_data_generator(dataset, lang_token_map, tokenizer, batch_size=32):
+        def get_data_generator(dataset, lang_token_map, tokenizer, batch_size=16):
             dataset = dataset.shuffle()
             for i in range(0, len(dataset), batch_size):
                 raw_batch = dataset[i:i+batch_size]
@@ -246,18 +246,18 @@ class Lora_Trainer :
                 self.model = PeftModel.from_pretrained(
                 self.model, config["lora"]["checkpoint"], is_trainable=True
             )
-        else:
-            self.peft_config = LoraConfig(
-                r=self.lora_config["r"],
-                inference_mode=False,
-                lora_alpha=self.lora_config["alpha"],
-                lora_dropout=self.lora_config["dropout"],
-                bias=self.lora_config['bias'],
-                task_type=TaskType.SEQ_2_SEQ_LM,
-                target_modules = self.lora_config["target_modules"]
-            )
-            self.model = get_peft_model(self.model, self.peft_config)
-            self.model.print_trainable_parameters()
+            else:
+                self.peft_config = LoraConfig(
+                    r=self.lora_config["r"],
+                    inference_mode=False,
+                    lora_alpha=self.lora_config["alpha"],
+                    lora_dropout=self.lora_config["lora_dropout"],
+                    bias=self.lora_config['bias'],
+                    task_type=TaskType.SEQ_2_SEQ_LM,
+                    target_modules = self.lora_config["target_modules"]
+                )
+                self.model = get_peft_model(self.model, self.peft_config)
+                self.model.print_trainable_parameters()
         
     def _build_optimizer(self, model_parameters: Iterator) -> torch.optim.Optimizer:
         """
@@ -327,7 +327,9 @@ class Lora_Trainer :
             total_epoch_loss = 0.0
             running_loss = 0.0
             counter = 0
+            print(train_generator)
             for src_batch, tgt_batch in tqdm(train_generator):
+
                 src_batch, tgt_batch = src_batch.to(self.device), tgt_batch.to(self.device)
                 optimizer.zero_grad()
                 outputs = self.model(input_ids=src_batch, labels=tgt_batch)
