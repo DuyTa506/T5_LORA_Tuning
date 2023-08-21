@@ -1,0 +1,52 @@
+model:
+  tokenizer_path: "google/mt5-small" # optional path to your trained tokenizer, will default to model size tokenizer
+  model_size: "google/mt5-small"
+  save_name : "mt5-small-lora"
+
+training:
+  epochs: 20
+  batch_size: 32
+  beam_size: 1
+  max_output_length: 300
+  optimizer: adam # sgd  #adamw
+  learning_rate: 0.0003
+  weight_decay: 0.0
+  reduce_lr_on_bleu_plateau: True
+  patience: 3
+  reduction_factor: 0.1
+  min_lr: 0.00000001
+  num_workers_data_gen: 2
+  shuffle_data: True
+  early_stopping: False
+  evaluate_dev: True
+  use_cuda: "cuda"
+  use_int8 : False
+
+data:
+  src_lang: vi
+  tgt_lang: laos
+  src_train: data/train_data/train.vi
+  src_dev: data/train_data/dev.vi
+  tgt_train: data/train_data/train.laos
+  tgt_dev: data/train_data/dev.laos
+  src_prefix: translate Vietnamese to Lao
+
+data_config :
+  use_HF : True
+  hf_dataset_name: "opus100",
+  hf_dataset_config": "en-vi",
+  src_prefix": "src",
+  src_lang: "en",
+  tgt_lang: "vi"
+
+
+lora:
+  is_activate : True
+  checkpoint: null # str
+  target_modules:
+  - "q"
+  - "v"
+  r: 32
+  alpha: 64
+  lora_dropout : 0.05
+  bias : "none"
