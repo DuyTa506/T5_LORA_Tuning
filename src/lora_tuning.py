@@ -1,6 +1,8 @@
 import os
 from typing import Generator
 from typing import Iterator
+
+import numpy as np
 from accelerate import Accelerator # distributed training with multi-gpus
 import torch
 from utils import load_config
@@ -57,98 +59,99 @@ class Lora_Trainer :
         self.logger.info(f"Experiment Output Path: \n {self.experiment_path}")
         self.logger.info(f"Training will be begin with this configuration: \n {config} ")
     
-    def _create_datasets(self) -> tuple:
-
-        """
-        Creates the following dataset from the data paths in the config file.
-
-        - a train generator that generates batches of src and tgt data
-        - a dev generator that generates batches of src dev data
-        - tgt_dev that denotes the raw target dev data
-        """
-        # add task prefix and EOS token as required by model
-        src_train = [
-            self.data_config["src_prefix"]+":" + text.strip() + " </s>"
-            for text in list(open(self.data_config["src_train"], encoding="utf-8"))
-        ]
-        src_dev = [
-             self.data_config["src_prefix"] +":"+ text.strip() + " </s>"
-            for text in list(open(self.data_config["src_dev"], encoding="utf-8"))
-        ]
-
-        tgt_train = [text.strip() + " </s>" for text in list(open(self.data_config["tgt_train"], encoding="utf-8"))]
-        tgt_dev = [text.strip() for text in list(open(self.data_config["tgt_dev"], encoding="utf-8"))]
-
-        # tokenize src and target data
-        src_train_dict = self.tokenizer.batch_encode_plus(
-            src_train,
-            max_length=self.train_config["max_output_length"],
-            return_tensors="pt",
-            pad_to_max_length=True,
-        )
-        src_dev_dict = self.tokenizer.batch_encode_plus(
-            src_dev,
-            max_length=self.train_config["max_output_length"],
-            return_tensors="pt",
-            pad_to_max_length=True,
-        )
-        tgt_train_dict = self.tokenizer.batch_encode_plus(
-            tgt_train,
-            max_length=self.train_config["max_output_length"],
-            return_tensors="pt",
-            pad_to_max_length=True,
-        )
-
-        # obtain input tensors
-        input_ids = src_train_dict["input_ids"]
-        input_dev_ids = src_dev_dict["input_ids"]
-        output_ids = tgt_train_dict["input_ids"]
-
-        # specify data loader params and create train generator
-        params = {
-            "batch_size": self.train_config["batch_size"],
-            "shuffle": self.train_config["shuffle_data"],
-            "num_workers": self.train_config["num_workers_data_gen"],
-        }
-        train_generator = DataLoader(ParallelDataset(input_ids, output_ids), **params)
-        print("train_generator:", train_generator)
-        self.logger.info(f"Created training dataset of {len(input_ids)} parallel sentences")
-
-        dev_params = params
-        dev_params["shuffle"] = False
-        dev_generator = DataLoader(MonoDataset(input_dev_ids), **dev_params)
-
-        all_data = (train_generator, dev_generator, tgt_dev)
-
-        return all_data
-
-
     def _create_hf_datasets(self):
         # Load Opus-100 English-Vietnamese dataset from Hugging Face datasets library
         dataset = load_dataset(self.data_HF_config["hf_dataset_name"], self.data_HF_config["hf_dataset_config"])
 
+        train_dataset = dataset['train']
+        test_dataset = dataset['test']
 
-        def preprocess_function(examples):
-            src = [self.data_HF_config["src_prefix"] + ": " + text.strip() + " </s>" for text in examples["translation"][self.data_HF_config["src_lang"]]]
-            tgt = [text.strip() + " </s>" for text in examples["translation"][self.data_HF_config["tgt_lang"]]]
-            return {"src_texts": src, "tgt_texts": tgt}
+        LANG_TOKEN_MAPPING = {
+            self.data_config['src_lang']: '',
+            self.data_config['tgt_lang']: ''
+        }
 
-        tokenized_dataset = dataset.map(preprocess_function, batched=True)
+        special_tokens_dict = {'additional_special_tokens': list(LANG_TOKEN_MAPPING.values())}
+        self.tokenizer.add_special_tokens(special_tokens_dict)
+        self.model.resize_token_embeddings(len(self.tokenizer))
 
+        def encode_input_str(text, target_lang, tokenizer, seq_len,
+                            lang_token_map=LANG_TOKEN_MAPPING):
+            target_lang_token = lang_token_map[target_lang]
 
-        def tokenize_function(examples):
-            src_tokenized = self.tokenizer(examples["src_texts"], padding=True, truncation=True, max_length=self.train_config["max_output_length"])
-            tgt_tokenized = self.tokenizer(examples["tgt_texts"], padding=True, truncation=True, max_length=self.train_config["max_output_length"])
-            return {"input_ids": src_tokenized["input_ids"], "output_ids": tgt_tokenized["input_ids"]}
+            # Tokenize and add special tokens
+            input_ids = tokenizer.encode(
+                text=target_lang_token + text,
+                return_tensors='pt',
+                padding='max_length',
+                truncation=True,
+                max_length=seq_len)
 
-        tokenized_and_encoded_dataset = tokenized_dataset.map(tokenize_function, batched=True)
+            return input_ids[0]
 
-        train_generator = DataLoader(tokenized_and_encoded_dataset["train"], batch_size=self.train_config["batch_size"], shuffle=self.train_config["shuffle_data"], num_workers=self.train_config["num_workers_data_gen"])
-        dev_generator = DataLoader(tokenized_and_encoded_dataset["validation"], batch_size=self.train_config["batch_size"], shuffle=False, num_workers=self.train_config["num_workers_data_gen"])
+        def encode_target_str(text, tokenizer, seq_len,
+                            lang_token_map=LANG_TOKEN_MAPPING):
+            token_ids = tokenizer.encode(
+                text=text,
+                return_tensors='pt',
+                padding='max_length',
+                truncation=True,
+                max_length=seq_len)
 
-        all_data = (train_generator, dev_generator, tokenized_dataset["validation"]["tgt_texts"])
+            return token_ids[0]
+
+        def format_translation_data(translations, lang_token_map, tokenizer, seq_len=128):
+            # Choose a random 2 languages for in i/o
+            langs = list(lang_token_map.keys())
+            input_lang, target_lang = np.random.choice(langs, size=2, replace=False)
+
+            # Get the translations for the batch
+            input_text = translations[input_lang]
+            target_text = translations[target_lang]
+
+            if input_text is None or target_text is None:
+                return None
+
+            input_token_ids = encode_input_str(
+                input_text, target_lang, tokenizer, seq_len, lang_token_map)
+
+            target_token_ids = encode_target_str(
+                target_text, tokenizer, seq_len, lang_token_map)
+
+            return input_token_ids, target_token_ids
+
+        def transform_batch(batch, lang_token_map, tokenizer):
+            inputs = []
+            targets = []
+            for translation_set in batch['translation']:
+                formatted_data = format_translation_data(
+                    translation_set, lang_token_map, tokenizer, self.train_config["max_output_length"])
+
+                if formatted_data is None:
+                    continue
+
+                input_ids, target_ids = formatted_data
+                inputs.append(input_ids.unsqueeze(0))
+                targets.append(target_ids.unsqueeze(0))
+
+            batch_input_ids = torch.cat(inputs).to(self.device)
+            batch_target_ids = torch.cat(targets).to(self.device)
+
+            return batch_input_ids, batch_target_ids
+
+        def get_data_generator(dataset, lang_token_map, tokenizer, batch_size=32):
+            dataset = dataset.shuffle()
+            for i in range(0, len(dataset), batch_size):
+                raw_batch = dataset[i:i + batch_size]
+                yield transform_batch(raw_batch, lang_token_map, tokenizer)
+
+        train_generator = get_data_generator(train_dataset, LANG_TOKEN_MAPPING, self.tokenizer)
+        dev_generator = get_data_generator(test_dataset, LANG_TOKEN_MAPPING, self.tokenizer)
+
+        all_data = (train_generator, dev_generator, test_dataset["translation"][self.data_config['tgt_lang']])
 
         return all_data
+
 
     def _build_model(self) -> None:
         """
