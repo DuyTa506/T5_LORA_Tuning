@@ -304,7 +304,7 @@ class Lora_Trainer :
         optimizer = self._build_optimizer(self.model.parameters())
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer,
-            "max",
+            "min",
             self.train_config["reduction_factor"],
             self.train_config["patience"],
             verbose=True,
@@ -313,9 +313,12 @@ class Lora_Trainer :
 
         self.logger.info("Building data generators...")
         if self.data_HF_config['use_HF']:
+            print('===================================')
             print('Preparing for huggingface dataset: ')
+
             train_generator, dev_generator, tgt_dev = self._create_hf_datasets()
             print("Done !!!")
+            print('===================================')
             
         else :
 
@@ -327,7 +330,7 @@ class Lora_Trainer :
             total_epoch_loss = 0.0
             running_loss = 0.0
             counter = 0
-            print(train_generator)
+
             for src_batch, tgt_batch in tqdm(train_generator):
 
                 src_batch, tgt_batch = src_batch.to(self.device), tgt_batch.to(self.device)

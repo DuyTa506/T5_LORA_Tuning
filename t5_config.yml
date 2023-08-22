@@ -5,12 +5,12 @@ model:
 
 training:
   epochs: 20
-  batch_size: 8
+  batch_size: 16
   beam_size: 1
-  max_output_length: 40
-  optimizer: adam # sgd  #adamw
-  learning_rate: 0.0003
-  weight_decay: 0.0
+  max_output_length: 128
+  optimizer: sophia # sgd  #adamw #sophia
+  learning_rate: 0.0000075 # if sophia , we need to initialize sightly smaller lr  : 7.5e-6 vs 3e-4
+  weight_decay: 0.2
   reduce_lr_on_bleu_plateau: True
   patience: 3
   reduction_factor: 0.1
@@ -46,7 +46,7 @@ lora:
   target_modules:
   - "q"
   - "v"
-  r: 32
+  r: 8 #32 did it compare to 8 ?
   alpha: 64
-  lora_dropout : 0.05
+  lora_dropout : 0.1 # 0.05
   bias : "none"
