@@ -32,6 +32,12 @@ Language Model Pre-training](https://arxiv.org/pdf/2305.14342.pdf)
 
 [PEFT](https://github.com/huggingface/peft)
 
+Assuming your desired experiment name is en_pd and config file is in t5_config.yml, run the test_lora_Trainer.py file as follows:
+
+```
+python test_lora_Trainer.py --experiment_name=en_pd --config_path=t5_config.yml
+```
+
 This command begins finetuning T5 on your input parallel data and saves the experiment outputs to a created directory of experiment_name + current date and time : 
 ```
 $PWD/experiments/en_pd_{date and time}
