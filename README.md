@@ -30,7 +30,7 @@ Language Model Pre-training](https://arxiv.org/pdf/2305.14342.pdf)
 #### Low-Rank Adaptation
 [PAPER LINK: LORA: LOW-RANK ADAPTATION OF LARGE LANGUAGE MODELS](https://arxiv.org/pdf/2106.09685.pdf)
 
-[PEFT](https://github.com/huggingface/peft)
+[Peft](https://github.com/huggingface/peft)
 
 Assuming your desired experiment name is en_pd and config file is in t5_config.yml, run the test_lora_Trainer.py file as follows:
 
