@@ -205,7 +205,7 @@ class Lora_Trainer :
 
             return batch_input_ids, batch_target_ids
 
-        def get_data_generator(dataset, lang_token_map, tokenizer, batch_size=16):
+        def get_data_generator(dataset, lang_token_map, tokenizer, batch_size=self.train_config['batch_size']):
             dataset = dataset.shuffle()
             for i in range(0, len(dataset), batch_size):
                 raw_batch = dataset[i:i+batch_size]
@@ -402,8 +402,8 @@ class Lora_Trainer :
         hyps = []
         self.model.eval()
         with torch.no_grad():
-            for batch in tqdm(dev_generator):
-                batch = batch.to(self.device)
+            for src_batch, _ in tqdm(dev_generator):
+                batch = src_batch.to(self.device)
                 translations = self.model.generate(input_ids=batch)
                 decoded = [
                     self.tokenizer.decode(
