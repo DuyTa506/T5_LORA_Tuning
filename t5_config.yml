@@ -9,7 +9,7 @@ training:
   beam_size: 1
   max_output_length: 128
   optimizer: sophia # sgd  #adamw #sophia
-  learning_rate: 0.0002 # if sophia , we need to initialize sightly smaller lr  : 2e-4 vs 3e-4
+  learning_rate: 0.00015 # if sophia , we need to initialize sightly smaller lr  : 2e-4 vs 3e-4
   weight_decay: 0.2
   reduce_lr_on_bleu_plateau: True
   patience: 3
