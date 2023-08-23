@@ -405,7 +405,7 @@ class Lora_Trainer :
         hyps = []
         self.model.eval()
         with torch.no_grad():
-            for src_batch, _ in tqdm(dev_generator):
+            for src_batch in tqdm(dev_generator):
                 batch = src_batch.to(self.device)
                 translations = self.model.generate(input_ids=batch)
                 decoded = [
