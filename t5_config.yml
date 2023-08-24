@@ -20,7 +20,7 @@ training:
   early_stopping: False
   evaluate_dev: True
   use_cuda: "cuda"
-  use_int8 : False
+  use_int8 : True
 
 data:
   src_lang: vi

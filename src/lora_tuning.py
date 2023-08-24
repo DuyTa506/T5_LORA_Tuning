@@ -237,6 +237,9 @@ class Lora_Trainer :
         }}
         self.model = T5ForConditionalGeneration.from_pretrained(self.model_config["model_size"],device_map = "auto", load_in_8bit=self.train_config['use_int8'])
         self.model.config.update(model_config)
+        if self.train_config['use_int8']:
+            from peft import prepare_model_for_intk_training
+            self.model = prepare_model_for_intk_training(self.model)
         ######## Lora adaptation ##########
         if self.lora_config['is_activate'] == True:
             if self.lora_config['checkpoint'] :
@@ -264,7 +267,7 @@ class Lora_Trainer :
         Build optimizer to be used in training.
         """
         if self.train_config["optimizer"] == "adam":
-            optimizer = torch.optim.Adam(
+            optimizer = torch.optim.AdamW(
                 model_parameters,
                 weight_decay=self.train_config["weight_decay"],
                 lr=self.train_config["learning_rate"],
@@ -322,7 +325,7 @@ class Lora_Trainer :
             
         else :
             print("====================")
-            print('Preparing for huggingface dataset: ')
+            print('Preparing for custom dataset: ')
 
             train_generator, dev_generator, tgt_dev = self._create_datasets()
             print("Done !!!")
