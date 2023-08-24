@@ -23,8 +23,8 @@ training:
   use_int8 : True
 
 data:
-  src_lang: vi
-  tgt_lang: lao
+  src_lang: lao
+  tgt_lang: vi
   src_train: /home/pvanh/data/thoa54/NMT/data_vi_lo/train_lao.txt
   src_dev: /home/pvanh/data/thoa54/NMT/data_vi_lo/dev_lao.txt
   tgt_train: /home/pvanh/data/thoa54/NMT/data_vi_lo/train_viet.txt
