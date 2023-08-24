@@ -32,7 +32,7 @@ data:
   src_prefix: translate Vietnamese to Lao
 
 data_config :
-  use_HF : True
+  use_HF : False
   hf_dataset_name: "opus100"
   hf_dataset_config: "en-vi"
   src_prefix": "src"
