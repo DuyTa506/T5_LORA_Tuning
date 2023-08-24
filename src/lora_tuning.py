@@ -237,9 +237,9 @@ class Lora_Trainer :
         }}
         self.model = T5ForConditionalGeneration.from_pretrained(self.model_config["model_size"],device_map = "auto", load_in_8bit=self.train_config['use_int8'])
         self.model.config.update(model_config)
-        if self.train_config['use_int8']:
-            from peft import prepare_model_for_intk_training
-            self.model = prepare_model_for_intk_training(self.model)
+        if self.train_config['use_int8'] == True:
+            from peft import prepare_model_for_kbit_training
+            self.model = prepare_model_for_kbit_training(self.model)
         ######## Lora adaptation ##########
         if self.lora_config['is_activate'] == True:
             if self.lora_config['checkpoint'] :
