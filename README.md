@@ -15,6 +15,28 @@ Assuming your desired experiment name is en_pd and config file is in t5_config.y
 ```
 python finetune_t5.py --experiment_name=en_pd --config_path=t5_config.yml
 ```
+### 2.1. Repository can adapt Lora training method and SophiaG optimizer for scale training efficent , to use this , config in t5_config.yml file :
+
+More description for choosing hyperparameters in here : 
+#### Sophia Optimizer
+
+[PAPER LINK: Sophia: A Scalable Stochastic Second-order Optimizer for
+Language Model Pre-training](https://arxiv.org/pdf/2305.14342.pdf)
+
+[Light way Implementation](https://github.com/kyegomez/Sophia)
+
+[Author Implementation](https://github.com/Liuhong99/Sophia)
+
+#### Low-Rank Adaptation
+[PAPER LINK: LORA: LOW-RANK ADAPTATION OF LARGE LANGUAGE MODELS](https://arxiv.org/pdf/2106.09685.pdf)
+
+[Peft](https://github.com/huggingface/peft)
+
+Assuming your desired experiment name is en_pd and config file is in t5_config.yml, run the test_lora_Trainer.py file as follows:
+
+```
+python test_lora_Trainer.py --experiment_name=en_pd --config_path=t5_config.yml
+```
 
 This command begins finetuning T5 on your input parallel data and saves the experiment outputs to a created directory of experiment_name + current date and time : 
 ```
@@ -33,4 +55,3 @@ python evaluate_test.py --helpshort
 ```
 Other flags:
 - --save_as_pretrained : boolean - If True, save the loaded model as a huggingface pretrained model 
->>>>>>> master
