@@ -113,7 +113,7 @@ class Lora_Trainer :
             "num_workers": self.train_config["num_workers_data_gen"],
         }
         train_generator = DataLoader(ParallelDataset(input_ids, output_ids), **params)
-        print("train_generator:", train_generator)
+        #print("train_generator:", train_generator)
         self.logger.info(f"Created training dataset of {len(input_ids)} parallel sentences")
 
         dev_params = params
@@ -321,9 +321,11 @@ class Lora_Trainer :
             print('===================================')
             
         else :
+            print("====================")
+            print('Preparing for huggingface dataset: ')
 
             train_generator, dev_generator, tgt_dev = self._create_datasets()
-
+            print("Done !!!")
         self.logger.info("Starting training...")
         best_bleu = 0.0
         for epoch in range(self.train_config["epochs"]):
@@ -405,7 +407,7 @@ class Lora_Trainer :
         hyps = []
         self.model.eval()
         with torch.no_grad():
-            for src_batch, _ in tqdm(dev_generator):
+            for src_batch in tqdm(dev_generator):
                 batch = src_batch.to(self.device)
                 translations = self.model.generate(input_ids=batch)
                 decoded = [
