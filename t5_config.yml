@@ -5,7 +5,7 @@ model:
 
 training:
   epochs: 20
-  batch_size: 16
+  batch_size: 64
   beam_size: 1
   max_output_length: 128
   optimizer: sophia # sgd  #adamw #sophia
@@ -15,7 +15,7 @@ training:
   patience: 3
   reduction_factor: 0.1
   min_lr: 0.00000001
-  num_workers_data_gen: 2
+  num_workers_data_gen: 4
   shuffle_data: True
   early_stopping: False
   evaluate_dev: True
@@ -24,11 +24,11 @@ training:
 
 data:
   src_lang: vi
-  tgt_lang: laos
-  src_train: data/train_data/train.vi
-  src_dev: data/train_data/dev.vi
-  tgt_train: data/train_data/train.laos
-  tgt_dev: data/train_data/dev.laos
+  tgt_lang: lao
+  src_train: /home/pvanh/data/thoa54/NMT/data_vi_lo/train_lao.txt
+  src_dev: /home/pvanh/data/thoa54/NMT/data_vi_lo/dev_lao.txt
+  tgt_train: /home/pvanh/data/thoa54/NMT/data_vi_lo/train_viet.txt
+  tgt_dev: /home/pvanh/data/thoa54/NMT/data_vi_lo/dev_viet.txt
   src_prefix: translate Vietnamese to Lao
 
 data_config :
