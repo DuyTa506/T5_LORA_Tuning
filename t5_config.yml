@@ -5,12 +5,12 @@ model:
 
 training:
   epochs: 20
-  batch_size: 64
-  beam_size: 1
+  batch_size: 48
+  beam_size: 4
   max_output_length: 128
   optimizer: sophia # sgd  #adamw #sophia
-  learning_rate: 0.00015 # if sophia , we need to initialize sightly smaller lr  : 2e-4 vs 3e-4
-  weight_decay: 0.2
+  learning_rate: 0.0002 # if sophia , we need to initialize sightly smaller lr  : 2e-4 vs 3e-4
+  weight_decay: 0.02
   reduce_lr_on_bleu_plateau: True
   patience: 3
   reduction_factor: 0.1
@@ -29,7 +29,7 @@ data:
   src_dev: /home/pvanh/data/thoa54/NMT/data_vi_lo/dev_lao.txt
   tgt_train: /home/pvanh/data/thoa54/NMT/data_vi_lo/train_viet.txt
   tgt_dev: /home/pvanh/data/thoa54/NMT/data_vi_lo/dev_viet.txt
-  src_prefix: translate Vietnamese to Lao
+  src_prefix: translate Lo to Vi
 
 data_config :
   use_HF : False
